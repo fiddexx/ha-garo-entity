@@ -1,0 +1,120 @@
+{
+  "title": "GARO Entity",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to GARO Entity",
+        "description": "The EVDriver account controls charging. An optional Owner account adds configuration and extended meter data.",
+        "data": {
+          "username": "EVDriver username",
+          "password": "EVDriver password",
+          "cognito_client_id": "EVDriver Cognito client ID",
+          "owner_username": "Owner username (optional)",
+          "owner_password": "Owner password (optional)",
+          "owner_cognito_client_id": "Owner Cognito client ID",
+          "scan_interval": "Update interval (seconds)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in to GARO Entity again",
+        "data": {
+          "password": "EVDriver password",
+          "cognito_client_id": "EVDriver Cognito client ID",
+          "owner_username": "Owner username",
+          "owner_password": "Owner password",
+          "owner_cognito_client_id": "Owner Cognito client ID"
+        }
+      },
+      "reconfigure": {
+        "title": "Change GARO cloud accounts",
+        "description": "EVDriver controls charging. Owner is optional and adds configuration and extended data.",
+        "data": {
+          "username": "EVDriver username",
+          "password": "EVDriver password",
+          "cognito_client_id": "EVDriver Cognito client ID",
+          "owner_username": "Owner username (optional)",
+          "owner_password": "Owner password (optional)",
+          "owner_cognito_client_id": "Owner Cognito client ID",
+          "scan_interval": "Update interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to GARO Entity.",
+      "invalid_auth": "Sign-in failed. Check the username, password and Cognito client ID.",
+      "invalid_owner_auth": "Owner sign-in failed. Check the Owner credentials and Cognito client ID.",
+      "insufficient_permissions": "The GARO account does not have access to the required cloud API.",
+      "owner_permissions": "The Owner account does not have Owner access in GARO's cloud API.",
+      "owner_incomplete": "Enter both Owner username and Owner password, or leave both empty.",
+      "owner_station_mismatch": "The EVDriver and Owner accounts do not share a charging station.",
+      "no_stations": "No GARO Entity charging stations were found for this account.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This GARO account is already configured.",
+      "reauth_successful": "The GARO account was reauthenticated.",
+      "reconfigure_successful": "The GARO cloud accounts were updated.",
+      "wrong_account": "The EVDriver account does not match this integration."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Local controller and peak-period schedule",
+        "description": "Optional LAN access adds live phase current, local power and control of GaroConnectionGroupMaxCurrent. Limits are in ampere, not kW.",
+        "data": {
+          "local_enabled": "Enable local GARO API",
+          "local_host": "Local IP address or URL",
+          "local_username": "Local username",
+          "local_password": "Local password",
+          "local_verify_ssl": "Verify the local TLS certificate",
+          "schedule_enabled": "Enable peak-period current schedule",
+          "schedule_default_limit": "Standard current limit (A)",
+          "schedule_peak_limit": "Peak-period current limit (A)",
+          "schedule_start": "Peak period starts",
+          "schedule_end": "Peak period ends",
+          "schedule_weekdays": "Peak-period weekdays",
+          "schedule_months": "Peak-period months"
+        },
+        "data_description": {
+          "local_verify_ssl": "Leave disabled for GARO controllers with a self-signed certificate.",
+          "schedule_enabled": "When enabled, the integration automatically writes the selected group-current limit every time the period changes.",
+          "schedule_default_limit": "Use only a value verified for the electrical installation. This changes GaroConnectionGroupMaxCurrent.",
+          "schedule_peak_limit": "Lower group-current limit used during the selected peak period."
+        }
+      }
+    },
+    "error": {
+      "local_incomplete": "Enter the local host, username and password.",
+      "cannot_connect_local": "Could not connect to the local GARO controller."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "connector_status": {"name": "Connector status"},
+      "session_energy": {"name": "Current or latest session energy"},
+      "session_start": {"name": "Session start"},
+      "session_end": {"name": "Session end"},
+      "total_energy": {"name": "Total imported energy"},
+      "charging_power": {"name": "Charging power"},
+      "offered_current": {"name": "Offered current"},
+      "local_power": {"name": "Local total power"},
+      "phase_current": {"name": "Phase current {phase}"},
+      "connection_group_max_current": {"name": "Connection group maximum current"},
+      "schedule_status": {
+        "name": "Peak-period schedule",
+        "state": {
+          "disabled": "Disabled",
+          "standard": "Standard limit",
+          "peak": "Peak-period limit"
+        }
+      }
+    },
+    "switch": {
+      "charging": {"name": "Charging"}
+    },
+    "number": {
+      "owner_max_current": {"name": "Maximum charging current"}
+    }
+  }
+}

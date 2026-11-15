@@ -1,0 +1,15 @@
+.claude
+swagger.json
+test_garo_api.py
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+
+.env
+.env.*
+!.env.example
+secrets.yaml
+.storage/
+config.json
+log.json

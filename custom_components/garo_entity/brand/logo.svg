@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 256">
+  <rect x="8" y="8" width="624" height="240" rx="56" fill="#102942"/>
+  <g transform="translate(20)">
+    <path d="M88 54h80a14 14 0 0 1 14 14v74a54 54 0 0 1-108 0V68a14 14 0 0 1 14-14Z" fill="none" stroke="#36a9e1" stroke-width="12"/>
+    <path d="M101 43v25M155 43v25" stroke="#36a9e1" stroke-width="12" stroke-linecap="round"/>
+    <path d="m139 83-35 52h25l-12 39 36-55h-25Z" fill="#ffd23f"/>
+    <path d="M128 196v34" stroke="#36a9e1" stroke-width="12" stroke-linecap="round"/>
+  </g>
+  <text x="250" y="116" fill="#ffffff" font-family="DejaVu Sans, sans-serif" font-size="54" font-weight="700">GARO</text>
+  <text x="250" y="174" fill="#36a9e1" font-family="DejaVu Sans, sans-serif" font-size="48" font-weight="500">Entity</text>
+</svg>

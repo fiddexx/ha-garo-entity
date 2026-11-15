@@ -1,0 +1,118 @@
+{
+  "title": "GARO Entity",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Anslut till GARO Entity",
+        "description": "EVDriver-kontot styr laddningen. Ett valfritt Owner-konto ger konfiguration och utökade mätvärden.",
+        "data": {
+          "username": "EVDriver-användarnamn",
+          "password": "EVDriver-lösenord",
+          "cognito_client_id": "EVDriver Cognito-klient-id",
+          "owner_username": "Owner-användarnamn (valfritt)",
+          "owner_password": "Owner-lösenord (valfritt)",
+          "owner_cognito_client_id": "Owner Cognito-klient-id",
+          "scan_interval": "Uppdateringsintervall (sekunder)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Logga in på GARO Entity igen",
+        "data": {
+          "password": "EVDriver-lösenord",
+          "cognito_client_id": "EVDriver Cognito-klient-id",
+          "owner_username": "Owner-användarnamn",
+          "owner_password": "Owner-lösenord",
+          "owner_cognito_client_id": "Owner Cognito-klient-id"
+        }
+      },
+      "reconfigure": {
+        "title": "Ändra GARO:s molnkonton",
+        "description": "EVDriver styr laddningen. Owner är valfritt och ger konfiguration och utökade värden.",
+        "data": {
+          "username": "EVDriver-användarnamn",
+          "password": "EVDriver-lösenord",
+          "cognito_client_id": "EVDriver Cognito-klient-id",
+          "owner_username": "Owner-användarnamn (valfritt)",
+          "owner_password": "Owner-lösenord (valfritt)",
+          "owner_cognito_client_id": "Owner Cognito-klient-id",
+          "scan_interval": "Uppdateringsintervall (sekunder)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunde inte ansluta till GARO Entity.",
+      "invalid_auth": "Inloggningen misslyckades. Kontrollera användarnamn, lösenord och Cognito-klient-id.",
+      "invalid_owner_auth": "Owner-inloggningen misslyckades. Kontrollera Owner-uppgifterna och Cognito-klient-id.",
+      "insufficient_permissions": "GARO-kontot saknar åtkomst till det moln-API som krävs.",
+      "owner_permissions": "Owner-kontot saknar Owner-behörighet i GARO:s moln-API.",
+      "owner_incomplete": "Ange både Owner-användarnamn och Owner-lösenord, eller lämna båda tomma.",
+      "owner_station_mismatch": "EVDriver- och Owner-kontona delar inte någon laddbox.",
+      "no_stations": "Kontot har inga tillgängliga GARO Entity-laddboxar.",
+      "unknown": "Ett oväntat fel inträffade."
+    },
+    "abort": {
+      "already_configured": "Detta GARO-konto är redan konfigurerat.",
+      "reauth_successful": "GARO-kontot har loggats in på nytt.",
+      "reconfigure_successful": "GARO:s molnkonton har uppdaterats.",
+      "wrong_account": "EVDriver-kontot matchar inte denna integration."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lokal styrenhet och effektschema",
+        "description": "Valfri LAN-anslutning ger fasström, lokal effekt och styrning av GaroConnectionGroupMaxCurrent. Gränserna anges i ampere, inte kW.",
+        "data": {
+          "local_enabled": "Aktivera GARO:s lokala API",
+          "local_host": "Lokal IP-adress eller URL",
+          "local_username": "Lokalt användarnamn",
+          "local_password": "Lokalt lösenord",
+          "local_verify_ssl": "Verifiera lokalt TLS-certifikat",
+          "schedule_enabled": "Aktivera schema för höglasttid",
+          "schedule_default_limit": "Standardgräns (A)",
+          "schedule_peak_limit": "Gräns under höglasttid (A)",
+          "schedule_start": "Höglasttid börjar",
+          "schedule_end": "Höglasttid slutar",
+          "schedule_weekdays": "Veckodagar med höglasttid",
+          "schedule_months": "Månader med höglasttid"
+        },
+        "data_description": {
+          "local_verify_ssl": "Lämna avstängt för GARO-enheter med självsignerat certifikat.",
+          "schedule_enabled": "När funktionen är aktiv skriver integrationen automatiskt vald gruppström när perioden växlar.",
+          "schedule_default_limit": "Använd bara ett värde som är verifierat för elanläggningen. Detta ändrar GaroConnectionGroupMaxCurrent.",
+          "schedule_peak_limit": "Lägre gruppström som används under vald höglasttid."
+        }
+      }
+    },
+    "error": {
+      "local_incomplete": "Ange lokal adress, användarnamn och lösenord.",
+      "cannot_connect_local": "Kunde inte ansluta till GARO:s lokala styrenhet."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "connector_status": {"name": "Anslutningsstatus"},
+      "session_energy": {"name": "Pågående eller senaste laddning"},
+      "session_start": {"name": "Laddning startade"},
+      "session_end": {"name": "Laddning avslutades"},
+      "total_energy": {"name": "Total importerad energi"},
+      "charging_power": {"name": "Laddeffekt"},
+      "offered_current": {"name": "Tillgänglig laddström"},
+      "local_power": {"name": "Lokal total effekt"},
+      "phase_current": {"name": "Fasström {phase}"},
+      "connection_group_max_current": {"name": "Anslutningsgruppens maximala ström"},
+      "schedule_status": {
+        "name": "Schema för höglasttid",
+        "state": {
+          "disabled": "Avstängt",
+          "standard": "Standardgräns",
+          "peak": "Höglastgräns"
+        }
+      }
+    },
+    "switch": {"charging": {"name": "Laddning"}},
+    "number": {
+      "owner_max_current": {"name": "Maximal laddström"}
+    }
+  }
+}
