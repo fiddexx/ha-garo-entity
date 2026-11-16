@@ -77,7 +77,7 @@ class GaroChargingSwitch(GaroEntityBase, SwitchEntity):
         transaction = active_transaction(self.station_data.get("transactions"))
         transaction_id = transaction_identifier(transaction)
         if transaction_id is None:
-            context = str(self.station.get("_garo_context", "EVDriver"))
+            context = "EVDriver"
             try:
                 transactions = await self.api.async_get_transactions(
                     self.station_id, context, CONNECTOR_ID

@@ -60,21 +60,27 @@
   "options": {
     "step": {
       "init": {
-        "title": "Local controller and peak-period schedule",
-        "description": "Optional LAN access adds live phase current, local power and control of GaroConnectionGroupMaxCurrent. Limits are in ampere, not kW.",
+        "title": "Charger, load balancer and schedule",
+        "description": "Start/stop uses the cloud EVDriver account. The local charger connection reads meters only. The load balancer has a separate connection and is the only endpoint allowed to change group current. Confirm its role before enabling the schedule.",
         "data": {
-          "local_enabled": "Enable local GARO API",
-          "local_host": "Local IP address or URL",
-          "local_username": "Local username",
-          "local_password": "Local password",
-          "local_verify_ssl": "Verify the local TLS certificate",
+          "local_enabled": "Enable local load balancer connection",
+          "local_host": "Load balancer IP address or URL",
+          "local_username": "Load balancer local username",
+          "local_password": "Load balancer password (blank keeps saved password)",
+          "local_verify_ssl": "Verify load balancer TLS certificate",
           "schedule_enabled": "Enable peak-period current schedule",
           "schedule_default_limit": "Standard current limit (A)",
           "schedule_peak_limit": "Peak-period current limit (A)",
           "schedule_start": "Peak period starts",
           "schedule_end": "Peak period ends",
           "schedule_weekdays": "Peak-period weekdays",
-          "schedule_months": "Peak-period months"
+          "schedule_months": "Peak-period months",
+          "charger_local_enabled": "Enable local charger metering",
+          "charger_local_host": "Charger IP address or URL",
+          "charger_local_username": "Charger local username",
+          "charger_local_password": "Charger password (blank keeps saved password)",
+          "charger_local_verify_ssl": "Verify charger TLS certificate",
+          "local_is_balancer": "I confirm the load balancer address is a GARO Entity Balance"
         },
         "data_description": {
           "local_verify_ssl": "Leave disabled for GARO controllers with a self-signed certificate.",
@@ -85,22 +91,42 @@
       }
     },
     "error": {
-      "local_incomplete": "Enter the local host, username and password.",
+      "local_incomplete": "Check addresses and credentials. Charger and balancer must have different addresses. The schedule requires an enabled, confirmed load balancer.",
       "cannot_connect_local": "Could not connect to the local GARO controller."
     }
   },
   "entity": {
     "sensor": {
-      "connector_status": {"name": "Connector status"},
-      "session_energy": {"name": "Current or latest session energy"},
-      "session_start": {"name": "Session start"},
-      "session_end": {"name": "Session end"},
-      "total_energy": {"name": "Total imported energy"},
-      "charging_power": {"name": "Charging power"},
-      "offered_current": {"name": "Offered current"},
-      "local_power": {"name": "Local total power"},
-      "phase_current": {"name": "Phase current {phase}"},
-      "connection_group_max_current": {"name": "Connection group maximum current"},
+      "connector_status": {
+        "name": "Connector status"
+      },
+      "session_energy": {
+        "name": "Current or latest session energy"
+      },
+      "session_start": {
+        "name": "Session start"
+      },
+      "session_end": {
+        "name": "Session end"
+      },
+      "total_energy": {
+        "name": "Total imported energy"
+      },
+      "charging_power": {
+        "name": "Charging power"
+      },
+      "offered_current": {
+        "name": "Offered current"
+      },
+      "local_power": {
+        "name": "Local total power"
+      },
+      "phase_current": {
+        "name": "Phase current {phase}"
+      },
+      "connection_group_max_current": {
+        "name": "Connection group maximum current"
+      },
       "schedule_status": {
         "name": "Peak-period schedule",
         "state": {
@@ -110,9 +136,15 @@
         }
       }
     },
-    "switch": {"charging": {"name": "Charging"}},
+    "switch": {
+      "charging": {
+        "name": "Charging"
+      }
+    },
     "number": {
-      "owner_max_current": {"name": "Maximum charging current"}
+      "owner_max_current": {
+        "name": "Maximum charging current"
+      }
     }
   }
 }

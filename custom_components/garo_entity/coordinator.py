@@ -12,25 +12,20 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.util import dt as dt_util
 
 from .api import GaroEntityAPI, GaroEntityAuthError, GaroEntityError
 from .const import (
-    CONF_SCHEDULE_ENABLED,
     CONNECTOR_ID,
     DOMAIN,
     OWNER_MAX_CURRENT_KEY,
 )
-from .local_api import GaroEntityLocalAPI, GaroEntityLocalError
 from .parsers import station_identifier
-from .schedule import scheduled_limit
 
 _LOGGER = logging.getLogger(__name__)
 
 METER_INTERVAL = 300
 CONFIG_INTERVAL = 900
 DISCOVERY_INTERVAL = 3600
-LOCAL_DATA_KEY = "_local"
 
 
 class GaroEntityCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
@@ -42,7 +37,6 @@ class GaroEntityCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         entry: ConfigEntry,
         driver_api: GaroEntityAPI,
         owner_api: GaroEntityAPI | None,
-        local_api: GaroEntityLocalAPI | None,
         scan_interval: int,
     ) -> None:
         super().__init__(
@@ -56,19 +50,12 @@ class GaroEntityCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self.entry = entry
         self.driver_api = driver_api
         self.owner_api = owner_api
-        self.local_api = local_api
         self.stations: list[dict[str, Any]] = []
         self._last_discovery = 0.0
         self._last_meter = 0.0
         self._last_configuration = 0.0
 
-    @property
-    def local_data(self) -> dict[str, Any]:
-        """Return the latest local controller data."""
-        return (self.data or {}).get(LOCAL_DATA_KEY, {})
-
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
-        local_data = await self._async_update_local() if self.local_api else None
         now = time.monotonic()
         try:
             if not self.stations or now - self._last_discovery >= DISCOVERY_INTERVAL:
@@ -99,8 +86,6 @@ class GaroEntityCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 for station_id, station_data in results
                 if station_id
             }
-            if local_data is not None:
-                data[LOCAL_DATA_KEY] = local_data
             return data
         except GaroEntityAuthError as err:
             raise ConfigEntryAuthFailed from err
@@ -209,50 +194,6 @@ class GaroEntityCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 connector_updated = True
         data["available"] = connector_updated or bool(old.get("available"))
         return station_id, data
-
-    async def _async_update_local(self) -> dict[str, Any]:
-        """Read LAN values and enforce the optional peak-period schedule."""
-        assert self.local_api is not None
-        old = dict((self.data or {}).get(LOCAL_DATA_KEY, {}))
-        limit_result, meter_result = await asyncio.gather(
-            self.local_api.async_get_limit(),
-            self.local_api.async_get_energy_status(),
-            return_exceptions=True,
-        )
-        if isinstance(limit_result, Exception) and isinstance(
-            meter_result, Exception
-        ):
-            _LOGGER.warning("GARO local update failed: %s", limit_result)
-            return {**old, "available": False}
-
-        data = {**old, "available": True}
-        if not isinstance(meter_result, Exception):
-            data.update(meter_result)
-        else:
-            _LOGGER.warning("GARO local meter update failed: %s", meter_result)
-
-        target, active = scheduled_limit(self.entry.options, dt_util.now())
-        data["schedule_enabled"] = bool(
-            self.entry.options.get(CONF_SCHEDULE_ENABLED, False)
-        )
-        data["schedule_active"] = active
-        data["schedule_target_a"] = target if data["schedule_enabled"] else None
-
-        if isinstance(limit_result, Exception):
-            _LOGGER.warning("GARO local current-limit update failed: %s", limit_result)
-            return data
-
-        current_limit = float(limit_result)
-        if data["schedule_enabled"] and round(current_limit) != target:
-            try:
-                await self.local_api.async_set_limit(target)
-            except GaroEntityLocalError as err:
-                _LOGGER.warning("GARO local schedule command failed: %s", err)
-            else:
-                current_limit = float(target)
-                data["last_schedule_change"] = dt_util.utcnow().isoformat()
-        data["current_limit_a"] = current_limit
-        return data
 
     async def async_refresh_after_command(self, delay: float = 2.0) -> None:
         """Refresh shortly after a cloud or local command was sent."""

@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import GaroEntityCoordinator
+from .local_coordinator import GaroLocalCoordinator
 from .parsers import station_name
 
 
@@ -56,13 +57,14 @@ class GaroEntityBase(CoordinatorEntity[GaroEntityCoordinator]):
         )
 
 
-class GaroLocalEntity(CoordinatorEntity[GaroEntityCoordinator]):
+class GaroLocalEntity(CoordinatorEntity[GaroLocalCoordinator]):
     """Base class for values exposed by the local GARO controller."""
 
     _attr_has_entity_name = True
+    _availability_key = "meter_available"
 
     def __init__(
-        self, coordinator: GaroEntityCoordinator, entry: ConfigEntry
+        self, coordinator: GaroLocalCoordinator, entry: ConfigEntry
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
@@ -73,16 +75,17 @@ class GaroLocalEntity(CoordinatorEntity[GaroEntityCoordinator]):
 
     @property
     def available(self) -> bool:
-        return super().available and bool(self.local_data.get("available"))
+        return (super().available and bool(self.local_data.get("available"))
+                and bool(self.local_data.get(self._availability_key, False)))
 
     @property
     def device_info(self) -> DeviceInfo:
         local_api = self.coordinator.local_api
         host = local_api.base_url if local_api else "local"
         return DeviceInfo(
-            identifiers={(DOMAIN, f"local_{host}")},
-            name="GARO Entity Local Controller",
+            identifiers={(DOMAIN, f"charger_local_{host}" if self.coordinator.role == "charger" else f"local_{host}")},
+            name="GARO Entity Charger (local)" if self.coordinator.role == "charger" else "GARO Entity Balance (local)",
             manufacturer="GARO",
-            model="Entity Local API",
+            model="Entity Charger" if self.coordinator.role == "charger" else "Entity Balance",
             configuration_url=host if local_api else None,
         )

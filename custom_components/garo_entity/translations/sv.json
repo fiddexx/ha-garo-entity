@@ -60,21 +60,27 @@
   "options": {
     "step": {
       "init": {
-        "title": "Lokal styrenhet och effektschema",
-        "description": "Valfri LAN-anslutning ger fasström, lokal effekt och styrning av GaroConnectionGroupMaxCurrent. Gränserna anges i ampere, inte kW.",
+        "title": "Laddbox, lastbalanserare och schema",
+        "description": "Start/stopp går via EVDriver-kontot i molnet. Laddboxens lokala anslutning läser mätvärden. Lastbalanseraren har en separat anslutning och är den enda som får ändra gruppström. Bekräfta enhetens roll innan du aktiverar schemat.",
         "data": {
-          "local_enabled": "Aktivera GARO:s lokala API",
-          "local_host": "Lokal IP-adress eller URL",
-          "local_username": "Lokalt användarnamn",
-          "local_password": "Lokalt lösenord",
-          "local_verify_ssl": "Verifiera lokalt TLS-certifikat",
+          "local_enabled": "Aktivera lokal anslutning till lastbalanserare",
+          "local_host": "Lastbalanserarens IP-adress eller URL",
+          "local_username": "Lastbalanserarens lokala användarnamn",
+          "local_password": "Lastbalanserarens lösenord (tomt behåller sparat)",
+          "local_verify_ssl": "Verifiera lastbalanserarens TLS-certifikat",
           "schedule_enabled": "Aktivera schema för höglasttid",
           "schedule_default_limit": "Standardgräns (A)",
           "schedule_peak_limit": "Gräns under höglasttid (A)",
           "schedule_start": "Höglasttid börjar",
           "schedule_end": "Höglasttid slutar",
           "schedule_weekdays": "Veckodagar med höglasttid",
-          "schedule_months": "Månader med höglasttid"
+          "schedule_months": "Månader med höglasttid",
+          "charger_local_enabled": "Aktivera lokal avläsning av laddbox",
+          "charger_local_host": "Laddboxens IP-adress eller URL",
+          "charger_local_username": "Laddboxens lokala användarnamn",
+          "charger_local_password": "Laddboxens lösenord (tomt behåller sparat)",
+          "charger_local_verify_ssl": "Verifiera laddboxens TLS-certifikat",
+          "local_is_balancer": "Jag bekräftar att adressen för lastbalanseraren är en GARO Entity Balance"
         },
         "data_description": {
           "local_verify_ssl": "Lämna avstängt för GARO-enheter med självsignerat certifikat.",
@@ -85,22 +91,42 @@
       }
     },
     "error": {
-      "local_incomplete": "Ange lokal adress, användarnamn och lösenord.",
+      "local_incomplete": "Kontrollera adresser och inloggningar. Laddbox och lastbalanserare ska ha olika adresser. Schemat kräver en aktiverad och bekräftad lastbalanserare.",
       "cannot_connect_local": "Kunde inte ansluta till GARO:s lokala styrenhet."
     }
   },
   "entity": {
     "sensor": {
-      "connector_status": {"name": "Anslutningsstatus"},
-      "session_energy": {"name": "Pågående eller senaste laddning"},
-      "session_start": {"name": "Laddning startade"},
-      "session_end": {"name": "Laddning avslutades"},
-      "total_energy": {"name": "Total importerad energi"},
-      "charging_power": {"name": "Laddeffekt"},
-      "offered_current": {"name": "Tillgänglig laddström"},
-      "local_power": {"name": "Lokal total effekt"},
-      "phase_current": {"name": "Fasström {phase}"},
-      "connection_group_max_current": {"name": "Anslutningsgruppens maximala ström"},
+      "connector_status": {
+        "name": "Anslutningsstatus"
+      },
+      "session_energy": {
+        "name": "Pågående eller senaste laddning"
+      },
+      "session_start": {
+        "name": "Laddning startade"
+      },
+      "session_end": {
+        "name": "Laddning avslutades"
+      },
+      "total_energy": {
+        "name": "Total importerad energi"
+      },
+      "charging_power": {
+        "name": "Laddeffekt"
+      },
+      "offered_current": {
+        "name": "Tillgänglig laddström"
+      },
+      "local_power": {
+        "name": "Lokal total effekt"
+      },
+      "phase_current": {
+        "name": "Fasström {phase}"
+      },
+      "connection_group_max_current": {
+        "name": "Anslutningsgruppens maximala ström"
+      },
       "schedule_status": {
         "name": "Schema för höglasttid",
         "state": {
@@ -110,9 +136,15 @@
         }
       }
     },
-    "switch": {"charging": {"name": "Laddning"}},
+    "switch": {
+      "charging": {
+        "name": "Laddning"
+      }
+    },
     "number": {
-      "owner_max_current": {"name": "Maximal laddström"}
+      "owner_max_current": {
+        "name": "Maximal laddström"
+      }
     }
   }
 }

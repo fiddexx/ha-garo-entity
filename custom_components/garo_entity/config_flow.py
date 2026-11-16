@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from urllib.parse import urlsplit
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -62,6 +63,11 @@ from .const import (
     MIN_SCAN_INTERVAL,
 )
 from .local_api import GaroEntityLocalAPI, GaroEntityLocalError
+from .local_options import LOCAL_CREDENTIAL_KEYS, save_local_options
+from .const import (
+    CONF_LOCAL_IS_BALANCER, CONF_CHARGER_ENABLED, CONF_CHARGER_HOST,
+    CONF_CHARGER_USERNAME, CONF_CHARGER_PASSWORD, CONF_CHARGER_VERIFY_SSL,
+)
 from .parsers import station_identifier
 
 _LOGGER = logging.getLogger(__name__)
@@ -226,7 +232,7 @@ class GaroEntityConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._abort_if_unique_id_mismatch(reason="wrong_account")
                     return self.async_update_reload_and_abort(
                         entry,
-                        data=user_input,
+                        data={**{key: entry.data[key] for key in LOCAL_CREDENTIAL_KEYS if key in entry.data}, **user_input},
                         title=f"GARO Entity ({user_input[CONF_USERNAME]})",
                     )
 
@@ -296,18 +302,21 @@ class GaroEntityOptionsFlow(config_entries.OptionsFlowWithReload):
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                await _validate_local_options(self.hass, user_input)
+                data, options = save_local_options(
+                    dict(self.config_entry.data), dict(self.config_entry.options), user_input)
+                await _validate_local_options(self.hass, {**data, **options})
             except ValueError:
                 errors["base"] = "local_incomplete"
             except GaroEntityLocalError as err:
                 _LOGGER.warning("GARO local connection test failed: %s", err)
                 errors["base"] = "cannot_connect_local"
             else:
-                return self.async_create_entry(title="", data=user_input)
+                self.hass.config_entries.async_update_entry(self.config_entry, data=data)
+                return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(
             step_id="init",
-            data_schema=_options_schema(self.config_entry.options),
+            data_schema=_options_schema(user_input if user_input is not None else {**self.config_entry.data, **self.config_entry.options}),
             errors=errors,
         )
 
@@ -340,6 +349,17 @@ def _reauth_schema(current: dict[str, Any]) -> vol.Schema:
 def _options_schema(options: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
+            vol.Required(CONF_CHARGER_ENABLED,
+                         default=options.get(CONF_CHARGER_ENABLED, False)): bool,
+            vol.Optional(CONF_CHARGER_HOST,
+                         default=options.get(CONF_CHARGER_HOST, "")): str,
+            vol.Optional(CONF_CHARGER_USERNAME,
+                         default=options.get(CONF_CHARGER_USERNAME, "")): str,
+            vol.Optional(CONF_CHARGER_PASSWORD, default=""): PASSWORD_SELECTOR,
+            vol.Required(CONF_CHARGER_VERIFY_SSL,
+                         default=options.get(CONF_CHARGER_VERIFY_SSL, DEFAULT_LOCAL_VERIFY_SSL)): bool,
+            vol.Required(CONF_LOCAL_IS_BALANCER,
+                         default=options.get(CONF_LOCAL_IS_BALANCER, False)): bool,
             vol.Required(
                 CONF_LOCAL_ENABLED,
                 default=options.get(CONF_LOCAL_ENABLED, False),
@@ -354,7 +374,7 @@ def _options_schema(options: dict[str, Any]) -> vol.Schema:
             ): str,
             vol.Optional(
                 CONF_LOCAL_PASSWORD,
-                default=options.get(CONF_LOCAL_PASSWORD, ""),
+                default="",
             ): PASSWORD_SELECTOR,
             vol.Required(
                 CONF_LOCAL_VERIFY_SSL,
@@ -482,16 +502,28 @@ async def _validate_accounts(hass: HomeAssistant, data: dict[str, Any]) -> int:
 async def _validate_local_options(
     hass: HomeAssistant, options: dict[str, Any]
 ) -> None:
-    if not options.get(CONF_LOCAL_ENABLED, False):
-        return
-    required = (CONF_LOCAL_HOST, CONF_LOCAL_USERNAME, CONF_LOCAL_PASSWORD)
-    if any(not str(options.get(key, "")).strip() for key in required):
-        raise ValueError("Local host, username and password are required")
-    api = GaroEntityLocalAPI(
-        async_get_clientsession(hass),
-        options[CONF_LOCAL_HOST],
-        options[CONF_LOCAL_USERNAME],
-        options[CONF_LOCAL_PASSWORD],
-        bool(options.get(CONF_LOCAL_VERIFY_SSL, DEFAULT_LOCAL_VERIFY_SSL)),
-    )
-    await api.async_get_limit()
+    if options.get(CONF_SCHEDULE_ENABLED) and not (
+        options.get(CONF_LOCAL_ENABLED) and options.get(CONF_LOCAL_IS_BALANCER)
+    ):
+        raise ValueError("The schedule requires a confirmed load balancer")
+    urls = set()
+    for role, enabled, host, username, password, verify in (
+        ("charger", CONF_CHARGER_ENABLED, CONF_CHARGER_HOST, CONF_CHARGER_USERNAME,
+         CONF_CHARGER_PASSWORD, CONF_CHARGER_VERIFY_SSL),
+        ("balancer", CONF_LOCAL_ENABLED, CONF_LOCAL_HOST, CONF_LOCAL_USERNAME,
+         CONF_LOCAL_PASSWORD, CONF_LOCAL_VERIFY_SSL),
+    ):
+        if not options.get(enabled, False):
+            continue
+        if any(not str(options.get(key, "")).strip() for key in (host, username, password)):
+            raise ValueError("Local host, username and password are required")
+        api = GaroEntityLocalAPI(
+            async_get_clientsession(hass), options[host], options[username],
+            options[password], bool(options.get(verify, DEFAULT_LOCAL_VERIFY_SSL)))
+        address = urlsplit(api.base_url).hostname
+        if address in urls:
+            raise ValueError("Charger and balancer must use different addresses")
+        urls.add(address)
+        await api.async_get_energy_status()
+        if role == "balancer":
+            await api.async_get_limit()

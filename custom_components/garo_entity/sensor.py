@@ -19,7 +19,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONNECTOR_ID, DATA_COORDINATOR, DATA_LOCAL_API, DOMAIN
+from .const import CONNECTOR_ID, DATA_COORDINATOR, DATA_BALANCER_COORDINATOR, DATA_CHARGER_COORDINATOR, DOMAIN
 from .coordinator import GaroEntityCoordinator
 from .entity import GaroEntityBase, GaroLocalEntity
 from .parsers import (
@@ -64,17 +64,21 @@ async def async_setup_entry(
                 GaroOfferedCurrentSensor(coordinator, entry, station_id),
             )
         )
-    if hass.data[DOMAIN][entry.entry_id][DATA_LOCAL_API] is not None:
-        entities.extend(
-            (
-                GaroLocalPowerSensor(coordinator, entry),
-                GaroLocalPhaseCurrentSensor(coordinator, entry, "L1"),
-                GaroLocalPhaseCurrentSensor(coordinator, entry, "L2"),
-                GaroLocalPhaseCurrentSensor(coordinator, entry, "L3"),
-                GaroLocalCurrentLimitSensor(coordinator, entry),
-                GaroScheduleStatusSensor(coordinator, entry),
-            )
-        )
+    runtime = hass.data[DOMAIN][entry.entry_id]
+    for key in (DATA_BALANCER_COORDINATOR, DATA_CHARGER_COORDINATOR):
+        local = runtime[key]
+        if local is None:
+            continue
+        meters = [GaroLocalPowerSensor(local, entry)]
+        meters.extend(GaroLocalPhaseCurrentSensor(local, entry, phase)
+                      for phase in ("L1", "L2", "L3"))
+        if local.role == "charger":
+            for entity in meters:
+                entity._attr_unique_id = entity._attr_unique_id.replace("_local_", "_charger_local_", 1)
+        else:
+            meters.extend((GaroLocalCurrentLimitSensor(local, entry),
+                           GaroScheduleStatusSensor(local, entry)))
+        entities.extend(meters)
     async_add_entities(entities)
 
 
@@ -333,6 +337,7 @@ class GaroLocalPhaseCurrentSensor(GaroLocalEntity, SensorEntity):
 class GaroScheduleStatusSensor(GaroLocalEntity, SensorEntity):
     """Status of the optional local peak-period current schedule."""
 
+    _availability_key = "limit_available"
     _attr_translation_key = "schedule_status"
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = ["disabled", "standard", "peak"]
@@ -361,6 +366,7 @@ class GaroScheduleStatusSensor(GaroLocalEntity, SensorEntity):
 class GaroLocalCurrentLimitSensor(GaroLocalEntity, SensorEntity):
     """Current GaroConnectionGroupMaxCurrent value from the LAN API."""
 
+    _availability_key = "limit_available"
     _attr_translation_key = "connection_group_max_current"
     _attr_device_class = SensorDeviceClass.CURRENT
     _attr_state_class = SensorStateClass.MEASUREMENT

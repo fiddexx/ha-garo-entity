@@ -1,4 +1,4 @@
-# GARO Entity för Home Assistant – beta 3
+# GARO Entity för Home Assistant – beta 4
 
 En HACS-förberedd Home Assistant-integration för GARO Entity. Den använder
 [GARO Entity CSMS End User API](https://end-user-api.prod.garo-next-gen.com/docs)
@@ -13,14 +13,18 @@ fristående communityprojekt och inte en officiell GARO-integration.
 
 ## Status och skillnader mot originalet
 
-Version **1.1.0b3** lägger till separata EVDriver-/Owner-konton, start/stopp,
+Version **1.1.0b4** lägger till separata EVDriver-/Owner-konton, start/stopp,
 lokalt HTTPS-API, schemalagd gruppström, svenska texter och diagnostik.
 Autentisering och sensorhantering har omarbetats. Sensorurvalet är mer begränsat
 än i originalet; alla tidigare detaljsensorer finns inte med.
 
-De 13 medföljande enhetstesterna passerar. Fullständig verifiering mot en aktiv
-Home Assistant-installation och GARO-utrustning återstår. Börja med manuell
-installation och en laddbox. Testerna använder simulerade svar och bevisar inte
+De 31 medföljande enhetstesterna täcker bland annat autentisering, parsning,
+separata lokala anslutningar och schemaläggning. Vid ett begränsat driftprov
+2026-11-16 bekräftade användaren att start av laddning och lokal avläsning i
+Home Assistant fungerade. Laddboxens verkliga svar under laddning tolkades också
+korrekt av integrationens parser. Tidigare nollvärden kunde inte reproduceras;
+orsaken är inte fastställd. Stopp, lastbalanserarens schema och återhämtning efter
+avbrott återstår att verifiera i drift. Börja med manuell installation och en laddbox. Testerna använder simulerade svar och bevisar inte
 att alla kontoroller, firmwareversioner eller styrkommandon fungerar i drift.
 
 ## Funktioner
@@ -101,35 +105,55 @@ inte i originalprojektet. Bifoga aldrig lösenord eller omaskerad diagnostik.
 | Sensor | Tillgänglig laddström | `Current.Offered` i A. |
 | Number | Maximal laddström | `GaroOwnerMaxCurrent`, endast för Owner-konton. |
 
-## Lokal anslutning och effektschema
+## Tre anslutningar i beta 4
 
-Öppna integrationens **Konfigurera**-dialog efter att molnkontona har lagts till.
-Aktivera det lokala API:t och ange:
+| Anslutning | Uppgift |
+| --- | --- |
+| GARO-molnet, EVDriver | Start/stopp, laddstatus och transaktioner. Kontot måste ha tillgång till laddboxen. |
+| Laddboxens lokala API, GaroCU | Skrivskyddad avläsning av effekt och fasströmmar. |
+| Lastbalanserarens lokala API, GaroLI | Separata fasströmmar, effekt och gruppgräns. Endast denna anslutning får köra gruppströmsschemat. |
 
-- IP-adress eller fullständig URL till `GaroCU-…` eller `GaroLI-…`.
-- Lokalt användarnamn och lösenord.
-- TLS-verifiering avstängd om enheten använder ett självsignerat certifikat.
+Owner är valfritt för molnkonfiguration. Lokala anslutningar ersätter inte
+EVDriver-inloggningen. Lokal laddstatus och lokal sessionsenergi är ännu inte
+implementerade; dessa visas fortsatt från molnet.
 
-När anslutningen har testats skapas följande lokala entiteter:
+Öppna **Konfigurera** för att aktivera respektive lokal anslutning. Ange en
+separat adress och inloggning för laddboxen och lastbalanseraren. Använd endast
+värdnamn/IP eller bas-URL, utan lösenord eller `/status/energy-meter` i adressen.
+Lösenorden anges i egna fält; lämna ett lösenordsfält tomt för att behålla det
+sparade lösenordet. TLS-verifiering kan stängas av för självsignerade certifikat.
 
-| Typ | Entitet | Kommentar |
-| --- | --- | --- |
-| Sensor | Lokal total effekt | Rapporterad effekt, eller uppskattad som summan av fasström × 230 V. |
-| Sensor | Fasström L1/L2/L3 | Värden från `/status/energy-meter`. |
-| Sensor | Anslutningsgruppens maximala ström | Aktuellt `GaroConnectionGroupMaxCurrent` i A. |
-| Sensor | Schema för höglasttid | Visar avstängt, standardgräns eller höglastgräns. |
+Lokala mätvärden visas under separata enheter **GARO Entity Charger (local)**
+och **GARO Entity Balance (local)**. De blandas inte med molnets laddenergi.
+Varje lokal enhet uppdateras självständigt med integrationens uppdateringsintervall.
+Efter lyckad uppstart fortsätter lokal polling även om molnet inte svarar.
+**Vid uppstart krävs fortfarande en lyckad molnanslutning** för att upptäcka
+laddboxarna innan integrationen kan laddas.
 
-Effektschemat motsvarar Flask-scriptets logik men körs i Home Assistant. Exemplet
-från den tidigare effektavgiften blir:
+### Uppgradering från beta 3
 
-- Standardgräns: **55 A**.
-- Höglastgräns: **20 A**.
-- Tid: **07:00–20:00**.
-- Dagar: måndag–fredag.
+Den tidigare lokala adressen behålls i lastbalanserarens fält. Kontrollera den:
+om den pekade på en laddbox ska uppgifterna i stället anges i laddboxens fält.
+Befintliga lokala entitets-ID:n behålls för den äldre anslutningen. Har de använts
+för laddboxens mätning behöver berörda automationer kontrolleras när rollen ändras.
+
+Schemat skriver **ingenting förrän du bekräftat att adressen är lastbalanserarens**
+och aktiverat både anslutningen och schemat. Tidigare schemavärden bevaras, men
+bekräftelsen krävs efter uppgraderingen. Inloggningar flyttas från options till
+config entry-data och maskeras i integrationens diagnostik.
+
+### Schema för lastbalanseraren
+
+- Standardgräns: **55 A** som förvalt värde.
+- Höglastgräns: **20 A** som förvalt värde.
+- Tid: **07:00–20:00**, måndag–fredag.
 - Månader: januari–mars och november–december.
 
-Schemat är avstängt som standard och skriver bara ett nytt värde när aktuell
-gräns skiljer sig från målvärdet.
+Kontrollera gränserna mot din installation innan aktivering. Schemat skriver
+endast när en färsk avläst gräns skiljer sig från målet. Gränsen läses tillbaka
+efter skrivning; ett lyckat HTTP-svar räcker inte för att rapportera en ändring.
+Vid läsfel skickas inget nytt kommando. Laddboxens lokala anslutning får aldrig
+skriva denna gräns eller skicka start/stopp.
 
 ## Moln och lokalt API bör ha olika roller
 

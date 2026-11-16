@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import math
+from urllib.parse import urlsplit
 from typing import Any
 
 import aiohttp
@@ -27,11 +29,18 @@ class GaroEntityLocalAPI:
         verify_ssl: bool,
     ) -> None:
         clean_host = host.strip().rstrip("/")
-        self.base_url = (
-            clean_host
-            if clean_host.startswith(("http://", "https://"))
-            else f"https://{clean_host}"
-        )
+        parsed = urlsplit(clean_host if "://" in clean_host else f"https://{clean_host}")
+        if (parsed.scheme not in {"http", "https"} or not parsed.hostname
+                or parsed.username or parsed.password or parsed.path
+                or parsed.query or parsed.fragment):
+            raise ValueError("Enter a host address without credentials or an API path")
+        port = parsed.port  # Also validates malformed port numbers.
+        hostname = parsed.hostname.lower()
+        if ":" in hostname:
+            hostname = f"[{hostname}]"
+        default_port = 443 if parsed.scheme == "https" else 80
+        suffix = f":{port}" if port and port != default_port else ""
+        self.base_url = f"{parsed.scheme}://{hostname}{suffix}"
         self._session = session
         self._auth = aiohttp.BasicAuth(username, password)
         self._verify_ssl = verify_ssl
@@ -48,7 +57,10 @@ class GaroEntityLocalAPI:
         )
         value = payload.get("value") if isinstance(payload, dict) else None
         try:
-            return float(value)
+            result = float(value)
+            if not math.isfinite(result):
+                raise ValueError("Non-finite current")
+            return result
         except (TypeError, ValueError) as err:
             raise GaroEntityLocalError(
                 "The local controller returned an invalid current limit"
@@ -56,6 +68,8 @@ class GaroEntityLocalAPI:
 
     async def async_set_limit(self, value: int | float) -> None:
         """Set GaroConnectionGroupMaxCurrent in ampere."""
+        if not math.isfinite(value) or not 6 <= value <= 63 or int(value) != value:
+            raise GaroEntityLocalError("Group current must be an integer between 6 and 63 A")
         await self._request(
             "PUT",
             "/config/config-parameter",
@@ -133,33 +147,32 @@ def parse_energy_status(payload: Any) -> dict[str, Any]:
             samples.extend(item for item in values if isinstance(item, dict))
 
     phase_currents: dict[str, float] = {}
-    reported_power_w = 0.0
-    has_reported_power = False
+    powers: dict[str, float] = {}
     for sample in samples:
         try:
             value = float(sample.get("value"))
         except (TypeError, ValueError):
+            continue
+        if not math.isfinite(value):
             continue
         phase = str(sample.get("phase") or "")
         measurand = str(sample.get("measurand") or sample.get("measure_name") or "")
         unit = str(sample.get("unit") or "").lower()
 
         if phase in {"L1", "L2", "L3"} and (
-            not measurand or "current" in measurand.lower() or unit == "a"
+            measurand.lower() == "current.import" or (not measurand and unit in {"", "a"})
         ):
             phase_currents[phase] = value
-        if "power" in measurand.lower() or unit in {"w", "kw"}:
-            reported_power_w += value * (1000 if unit == "kw" else 1)
-            has_reported_power = True
+        if measurand.lower() == "power.active.import" or (not measurand and unit in {"w", "kw"}):
+            powers[phase] = value * (1000 if unit == "kw" else 1)
 
-    total_power_w = (
-        reported_power_w
-        if has_reported_power
-        else sum(phase_currents.values()) * 230.0
+    has_reported_power = bool(powers)
+    total_power_w = powers.get("") if "" in powers else sum(powers.values()) if powers else (
+        sum(phase_currents.values()) * 230.0 if phase_currents else None
     )
     return {
         "phase_currents": phase_currents,
-        "total_power_w": round(total_power_w, 1),
+        "total_power_w": round(total_power_w, 1) if total_power_w is not None else None,
         "power_estimated": not has_reported_power,
         "timestamp": timestamp,
     }

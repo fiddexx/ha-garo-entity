@@ -52,3 +52,13 @@ DATA_API: Final = "api"
 DATA_OWNER_API: Final = "owner_api"
 DATA_LOCAL_API: Final = "local_api"
 DATA_COORDINATOR: Final = "coordinator"
+
+# The legacy local_* keys retain their IDs and now represent the load balancer.
+CONF_LOCAL_IS_BALANCER: Final = "local_is_balancer"
+CONF_CHARGER_ENABLED: Final = "charger_local_enabled"
+CONF_CHARGER_HOST: Final = "charger_local_host"
+CONF_CHARGER_USERNAME: Final = "charger_local_username"
+CONF_CHARGER_PASSWORD: Final = "charger_local_password"
+CONF_CHARGER_VERIFY_SSL: Final = "charger_local_verify_ssl"
+DATA_BALANCER_COORDINATOR: Final = "balancer_coordinator"
+DATA_CHARGER_COORDINATOR: Final = "charger_coordinator"
